@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install ruff mypy
+      - name: Lint
+        run: ruff check src/ tests/
+      - name: Format check
+        run: ruff format --check src/ tests/
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Run unit tests
+        run: |
+          pytest tests/unit/ -v --tb=short --cov=src --cov-report=xml -x
+      - name: Run integration tests
+        run: |
+          pytest tests/integration/ -v --tb=short -x
+      - name: Upload coverage
+        if: matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v3
+        with:
+          file: coverage.xml
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: |
+          docker build -f docker/Dockerfile --target cpu -t cv-api:test .
+      - name: Test Docker health
+        run: |
+          docker run -d --name cv-test -p 8000:8000 cv-api:test
+          sleep 30
+          curl -f http://localhost:8000/health || exit 1
+          docker stop cv-test

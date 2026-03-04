@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: cpu
+    ports:
+      - "8000:8000"
+    environment:
+      - CV_DEVICE=cpu
+      - CV_LOG_LEVEL=INFO
+      - CV_LOG_FORMAT=json
+      - CV_CHROMA_DIR=/data/chroma
+      - CV_MODEL_DIR=/data/models
+      - CV_MAX_LOADED_MODELS=5
+      - CV_ONNX_ENABLED=false
+    volumes:
+      - model-data:/data/models
+      - chroma-data:/data/chroma
+      - upload-data:/data/uploads
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"
+    restart: unless-stopped
+
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+    restart: unless-stopped
+
+volumes:
+  model-data:
+  chroma-data:
+  upload-data:
