@@ -32,7 +32,7 @@ htmlcov/
 
 # Data
 data/
-models/
+/models/
 *.onnx
 
 # Environment
