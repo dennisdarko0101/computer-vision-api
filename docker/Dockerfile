@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir . --target=/app/deps
+RUN pip install --no-cache-dir --timeout=300 --retries=10 --upgrade pip && \
+    pip install --no-cache-dir --timeout=300 --retries=10 . --target=/app/deps
 
 # ── Stage 2: CPU Runtime ───────────────────────────────────────────────────
 FROM python:3.11-slim AS cpu
@@ -54,7 +54,7 @@ COPY src/ /app/src/
 COPY pyproject.toml /app/
 
 # Install GPU-specific packages
-RUN pip install --no-cache-dir onnxruntime-gpu
+RUN pip install --no-cache-dir --timeout=300 --retries=10 onnxruntime-gpu
 
 ENV PYTHONPATH=/app
 ENV CV_DEVICE=cuda
